@@ -1,0 +1,24 @@
+alter table accounts enable row level security;
+alter table transactions enable row level security;
+alter table transaction_events enable row level security;
+alter table evidence enable row level security;
+alter table delivery_events enable row level security;
+alter table disputes enable row level security;
+alter table dispute_responses enable row level security;
+alter table ledger_accounts enable row level security;
+alter table ledger_entries enable row level security;
+alter table idempotency_keys enable row level security;
+alter table outbox_events enable row level security;
+alter table audit_log enable row level security;
+alter table rate_limit_buckets enable row level security;
+alter table recovery_challenges enable row level security;
+alter table provider_webhook_events enable row level security;
+alter table account_admin_capabilities enable row level security;
+alter table payment_intents enable row level security;
+alter table account_payout_destinations enable row level security;
+alter table payout_transfers enable row level security;
+alter table account_verification_challenges enable row level security;
+alter table refund_attempts enable row level security;
+alter table schema_migrations enable row level security;
+
+revoke update, delete on audit_log from public;
