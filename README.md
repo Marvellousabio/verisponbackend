@@ -2,6 +2,45 @@
 
 Node.js 22+ / TypeScript / Express backend for the Verispon web and WhatsApp clients. Both channels call the same services and escrow engine. The API is designed for Render, Supabase PostgreSQL and private Cloudinary evidence storage.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    Web["Verispon web client"] -->|HTTPS, session cookie| ApiService
+    Meta["Meta WhatsApp Cloud API"] -->|Inbound webhook| WhatsApp
+    Webhooks["Nomba payment webhooks"] --> NombaRoutes
+
+    subgraph Render["Render"]
+        subgraph ApiService["API service · Express"]
+            Middleware["Security, CORS, validation"]
+            Routes["Auth, transactions, checkout, evidence, admin"]
+            WhatsApp["WhatsApp routes"]
+            NombaRoutes["Nomba webhook route"]
+            Services["Auth, checkout, evidence and escrow services"]
+            Repositories["PostgreSQL repositories"]
+            Middleware --> Routes
+            Middleware --> WhatsApp
+            Middleware --> NombaRoutes
+            Routes --> Services
+            WhatsApp --> Services
+            NombaRoutes --> Services
+            Services --> Repositories
+        end
+
+        Worker["Background worker · outbox, notifications and payouts"]
+    end
+
+    Repositories <-->|SQL and transactions| Postgres[("Supabase PostgreSQL<br/>accounts · escrow · ledger · outbox")]
+    Worker <-->|Claim and deliver outbox events| Postgres
+    Services <-->|Private evidence upload and streaming| Cloudinary["Cloudinary<br/>authenticated assets"]
+    Worker -->|Payment and payout API| Nomba["Nomba"]
+    Worker -->|WhatsApp templates and replies| Meta
+    Worker -->|Verification email| Resend["Resend"]
+    Migrate["Release step<br/>npm run db:migrate"] -->|Direct database connection| Postgres
+```
+
+The web client and WhatsApp bot share the same backend services and escrow rules. The API writes notification and provider work to PostgreSQL's outbox; the separate worker processes it and calls the relevant provider. Database migrations run as a release step using the direct PostgreSQL connection, while the API and worker use the Supabase pooler.
+
 ## Local setup
 
 1. Install Node.js 22 or later.
