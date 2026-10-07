@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: verispon-backend
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SESSION_SAME_SITE
+        value: none
+      - key: WEB_ORIGIN
+        value: https://verispon.com

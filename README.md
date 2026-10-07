@@ -129,14 +129,16 @@ The API process and worker are separate. To run a worker locally, set `ENABLE_WO
 
 ## Deployment
 
-- Deploy the API as a Render web service with build command `npm ci && npm run build` and start command `npm start`.
-- Deploy a separate Render background worker with build command `npm ci && npm run build` and start command `npm run worker`. Set `ENABLE_WORKERS=true` only on this service.
-- Use the Supabase **direct** database URL for migrations when possible. Use the Supabase pooler URL for Render runtime if direct connections exceed the project connection budget. Keep SSL enabled in production.
-- Set `WEB_ORIGIN=https://verispon.com` and `API_ORIGIN=https://api.verispon.com`. The frontend must send credentialed API requests; browsers only attach the session cookie to requests when configured with credentials.
+- Create the Render service from the repository's `render.yaml` Blueprint. It deploys the API with `npm ci && npm run build` and `npm start`; Render generates `SESSION_SECRET`.
+- The Blueprint deliberately does not set `DATABASE_URL` because no database is connected yet. In this state `/health` succeeds, but `/api/*` responds with `503 NOT_CONFIGURED`, and `/health/ready` remains `503`. Connect Supabase before treating the API as ready.
+- In the Render service's environment, set `DATABASE_URL` to the Supabase **pooler** connection string and keep SSL enabled. Apply migrations separately using the Supabase **direct** database URL: set it as `DATABASE_URL` in the release shell and run `npm run db:migrate`. The migration runner refuses pooler URLs.
+- Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` in Render too; readiness remains `503` until evidence storage is configured.
+- `WEB_ORIGIN` is set to `https://verispon.com` in the Blueprint; update it if the frontend uses another origin. The frontend must send credentialed API requests because auth uses a session cookie. `SESSION_SAME_SITE=none` supports requests from a frontend on a different site; production cookies are secure.
+- Add a separate Render background worker after Supabase is connected. Use build command `npm ci && npm run build`, start command `npm run worker`, and set `ENABLE_WORKERS=true` only on the worker service. Set the same runtime `DATABASE_URL` and provider secrets required by the worker.
 - Configure Cloudflare DNS/TLS for `api.verispon.com` to the Render service. Keep HTTPS enforced and do not cache `/api/*` responses.
-- Set `DATABASE_URL`, `SESSION_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` on both Render services. Never expose the Cloudinary API secret or provider credentials to Netlify.
+- Never expose the Cloudinary API secret or provider credentials to Netlify.
 - Set `AUTO_RELEASE_HOURS` only after the product owner has chosen the inspection window. If unset, inspection deadlines are not assigned and auto-release is disabled.
-- Run `npm run db:migrate` as a release step after deployment secrets are present and before switching production traffic.
+- Once the database and Cloudinary are configured, verify `/health/ready` before switching production traffic.
 
 ## Provider setup
 
